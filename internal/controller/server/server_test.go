@@ -2,16 +2,31 @@ package server
 
 import (
 	"context"
+	"github.com/golang/mock/gomock"
+	mockstorage "github.com/relationskatie/timetotest/internal/storage/mock/storage_mock"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"testing"
 )
 
-func TestServerLifeCycle(t *testing.T) {
-	srv := testController(t, nil)
-	srv.configureMiddlewares()
-	srv.configureRoutes()
-	ctx := context.Background()
-	require.NoError(t, srv.Run(ctx))
-	assert.NoError(t, srv.Shutdown(ctx))
+func TestController_Run(t *testing.T) {
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
+
+	mockStore := mockstorage.NewMockInterface(mockCtrl)
+	ctrl := testController(t, mockStore)
+
+	go func() {
+		err := ctrl.Run(context.Background())
+		assert.NoError(t, err)
+	}()
+}
+func TestController_Shutdown(t *testing.T) {
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
+
+	mockStore := mockstorage.NewMockInterface(mockCtrl)
+	ctrl := testController(t, mockStore)
+
+	err := ctrl.Shutdown(context.Background())
+	assert.NoError(t, err)
 }
