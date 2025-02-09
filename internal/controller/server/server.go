@@ -4,10 +4,13 @@ import (
 	"context"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v4/middleware"
 	"github.com/relationskatie/timetotest/config"
 	"github.com/relationskatie/timetotest/internal/controller"
 	storage2 "github.com/relationskatie/timetotest/internal/storage"
 	"go.uber.org/zap"
+	"go.uber.org/zap/zaptest"
+	"testing"
 )
 
 var _ controller.Controller = (*Controller)(nil)
@@ -28,6 +31,7 @@ func New(log *zap.Logger, cfg *config.Config, pool *pgxpool.Pool, storage2 stora
 		storage2: storage2,
 		srv:      echo.New(),
 	}
+	ctrl.configureMiddlewares()
 	ctrl.configureRoutes()
 	return ctrl, nil
 }
@@ -38,8 +42,13 @@ func (ctrl *Controller) configureRoutes() {
 		api.POST("/add_user/", ctrl.handleAddNewUser)
 		api.PATCH("/change_user/", ctrl.handleChangeUser)
 		api.GET("/return_all_users/", ctrl.handleGetAllUsers)
-		api.DELETE("/delete_user/", ctrl.handleDeleteUser)
+		api.DELETE("/delete_user/:username", ctrl.handleDeleteUser)
+		api.GET("/user/:id", ctrl.handleGetUserByID)
 	}
+}
+
+func (ctrl *Controller) configureMiddlewares() {
+	ctrl.srv.Use(middleware.Logger())
 }
 
 func (ctrl *Controller) Run(ctx context.Context) error {
@@ -57,4 +66,13 @@ func (ctrl *Controller) Run(ctx context.Context) error {
 }
 func (ctrl *Controller) Shutdown(ctx context.Context) error {
 	return ctrl.srv.Shutdown(ctx)
+}
+func testController(t testing.TB, store storage2.Interface) *Controller {
+	t.Helper()
+	ctrl := &Controller{
+		log:      zaptest.NewLogger(t),
+		storage2: store,
+		srv:      echo.New(),
+	}
+	return ctrl
 }
